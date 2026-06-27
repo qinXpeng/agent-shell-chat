@@ -25,12 +25,15 @@ export class AgentShellClient implements acp.Client {
   private opts: AgentShellClientOpts;
   private lastTypingAt = 0;
   private producedMessageThisTurn = false;
+  private intermediateMessageFlushCount = 0;
+  private retainingMessageUpdates = false;
   // Promise chain serializing onMessageFlush calls so concurrent boundary events
   // cannot interleave sends (e.g. chunk B reaching WeChat before chunk A).
   private messageFlushChain: Promise<void> = Promise.resolve();
   private static readonly TYPING_INTERVAL_MS = 5_000;
   private static readonly SEND_MAX_ATTEMPTS = 3;
   private static readonly SEND_RETRY_BASE_MS = 300;
+  private static readonly MAX_INTERMEDIATE_MESSAGE_FLUSHES = 6;
 
   /** Whether the agent emitted any non-empty message content during the current turn. */
   get hasProducedMessage(): boolean {
@@ -40,6 +43,8 @@ export class AgentShellClient implements acp.Client {
   /** Reset per-turn delivery state. Call at the start of each prompt. */
   newTurn(): void {
     this.producedMessageThisTurn = false;
+    this.intermediateMessageFlushCount = 0;
+    this.retainingMessageUpdates = false;
   }
 
   constructor(opts: AgentShellClientOpts) {
@@ -210,6 +215,19 @@ export class AgentShellClient implements acp.Client {
    */
   private async maybeFlushMessage(): Promise<void> {
     if (this.chunks.length === 0) return;
+    if (
+      this.intermediateMessageFlushCount >=
+      AgentShellClient.MAX_INTERMEDIATE_MESSAGE_FLUSHES
+    ) {
+      if (!this.retainingMessageUpdates) {
+        this.opts.log(
+          `[flush] reached the ${AgentShellClient.MAX_INTERMEDIATE_MESSAGE_FLUSHES}-message ` +
+            "intermediate flush limit; retaining message updates for final reply",
+        );
+        this.retainingMessageUpdates = true;
+      }
+      return;
+    }
     const text = this.chunks.join("");
     if (!text.trim()) {
       this.chunks = [];
@@ -221,6 +239,9 @@ export class AgentShellClient implements acp.Client {
     // the same text. New chunks arriving during the send are appended to the
     // now-empty array and flushed at the next boundary.
     this.chunks = [];
+    // Reserve the slot before awaiting the send chain. ACP notifications may
+    // arrive concurrently, so incrementing later could exceed the hard cap.
+    this.intermediateMessageFlushCount++;
 
     // Acquire a send slot using a simple mutex chain: each caller saves the
     // current tail of the chain, replaces it with a new unresolved promise,

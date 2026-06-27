@@ -17,6 +17,12 @@ import type {
 
 const CHANNEL_VERSION = "1.0.2";
 
+interface WeixinBusinessResponse {
+  ret?: number;
+  errcode?: number;
+  errmsg?: string;
+}
+
 function randomWechatUin(): string {
   const uint32 = crypto.randomBytes(4).readUInt32BE(0);
   return Buffer.from(String(uint32), "utf-8").toString("base64");
@@ -100,7 +106,22 @@ export async function sendMessage(params: {
   token?: string;
   body: SendMessageReq;
 }): Promise<void> {
-  await apiPost(params.baseUrl, "ilink/bot/sendmessage", params.body as unknown as Record<string, unknown>, params.token);
+  const endpoint = "ilink/bot/sendmessage";
+  const response = await apiPost<WeixinBusinessResponse>(
+    params.baseUrl,
+    endpoint,
+    params.body as unknown as Record<string, unknown>,
+    params.token,
+  );
+  if (
+    (response.ret !== undefined && response.ret !== 0) ||
+    (response.errcode !== undefined && response.errcode !== 0)
+  ) {
+    throw new Error(
+      `WeChat API ${endpoint} failed: ret=${response.ret ?? 0} ` +
+        `errcode=${response.errcode ?? 0} errmsg=${response.errmsg ?? ""}`,
+    );
+  }
 }
 
 export async function getUploadUrl(params: {
