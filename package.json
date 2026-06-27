@@ -1,0 +1,50 @@
+{
+  "name": "agent-shell-chat",
+  "version": "1.2.2",
+  "description": "Agent Shell Chat — bridge WeChat to any ACP-compatible AI agent",
+  "type": "module",
+  "files": [
+    "dist/",
+    "README.md",
+    "package.json"
+  ],
+  "bin": {
+    "agent-shell": "./dist/bin/agent-shell.js"
+  },
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepack": "npm run build",
+    "start": "node dist/bin/agent-shell.js",
+    "dev": "tsc --watch",
+    "test": "node --import tsx/esm --test tests/**/*.ts"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "^0.16.1",
+    "applicationinsights": "^2.9.6",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.22.3",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "wechat",
+    "acp",
+    "agent-client-protocol",
+    "ai-agent",
+    "bridge"
+  ]
+}
