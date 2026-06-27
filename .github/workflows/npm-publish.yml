@@ -63,9 +63,22 @@ jobs:
             echo "Bump package.json to $tag_version (or retag) and re-run."
             exit 1
           fi
+      - name: Check if version already published
+        id: release-check
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "agent-shell-chat@${version}" version >/dev/null 2>&1; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::agent-shell-chat@${version} already published, skipping."
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
       - run: npm ci
+        if: steps.release-check.outputs.already != 'true'
       - run: npm test
+        if: steps.release-check.outputs.already != 'true'
       - run: npm publish --provenance --access public
+        if: steps.release-check.outputs.already != 'true'
 
   publish-next:
     # Runs on every push to main and on manual dispatch. Publishes a
