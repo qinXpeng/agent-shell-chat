@@ -2,6 +2,10 @@
   "name": "agent-shell-chat",
   "version": "1.2.2",
   "description": "Agent Shell Chat — bridge WeChat to any ACP-compatible AI agent",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qinXpeng/agent-shell-chat.git"
+  },
   "type": "module",
   "files": [
     "dist/",
